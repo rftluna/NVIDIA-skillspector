@@ -9,8 +9,8 @@ antes de que un comando lo traiga a la máquina: `git clone`, `gh repo clone`,
 |---|---|---|
 | LOW | pasa en silencio | pasa en silencio |
 | MEDIUM (u otras categorías) | pasa con aviso corto | pasa con aviso corto |
-| HIGH/CRITICAL de prompt injection, supply chain, robo de datos o malware | pregunta (`ask`) con score + top 3 | bloquea (`deny`) con score + top 3 |
-| El escaneo no termina en ~30 min | pregunta | bloquea |
+| HIGH/CRITICAL de prompt injection, supply chain, robo de datos o malware | pregunta (`ask`) con score + top 3 y ruta del reporte; en modo automático (`auto`, `bypassPermissions`, `dontAsk`) bloquea (`deny`) | bloquea (`deny`) con score + top 3 |
+| El escaneo no termina en ~30 min | pregunta (bloquea en modo automático) | bloquea |
 | Falla el escaneo o no hay repo de GitHub identificable | pasa con aviso "NO se revisó" | igual |
 
 Los reportes completos de los casos graves quedan en `~/.claude/hooks/reports/` y cada

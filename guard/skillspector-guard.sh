@@ -59,12 +59,16 @@ emit_msg() {   # aviso no bloqueante
     || printf '%s\n' '{"systemMessage":"SkillSpector guard: aviso (no se pudo formatear)"}'
   exit 0
 }
-emit_ask() {   # Claude: pide confirmación. Codex: bloquea (no soporta "ask").
+emit_ask() {   # Claude: pide confirmación. Codex o modo automático: bloquea.
   local r="$1" d="ask"
   if [ "$MODE" = codex ]; then
     d="deny"
     r="⛔ BLOQUEADO por SkillSpector (Codex no puede preguntarte). $r Si aun así lo quieres, revisa el reporte y ejecútalo tú a mano."
+  elif is_auto_mode; then
+    d="deny"
+    r="⛔ BLOQUEADO por SkillSpector (sesión en modo automático '$PERM_MODE': nadie vería la pregunta). $r Si aun así lo quieres, revisa el reporte y ejecútalo tú a mano o desde una sesión en modo normal."
   fi
+  log "EMIT $d mode=$MODE permission_mode=${PERM_MODE:-?}"
   "$JQ" -cn --arg r "$r" --arg d "$d" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}, systemMessage:$r}' 2>/dev/null \
     || printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"%s","permissionDecisionReason":"SkillSpector: hallazgos graves (ver log)"}}\n' "$d"
   exit 0
@@ -80,6 +84,15 @@ save_report() {   # guarda el JSON completo y devuelve la ruta
 INPUT="$(cat 2>/dev/null)"
 CMD="$(printf '%s' "$INPUT" | "$JQ" -r '.tool_input.command // empty' 2>/dev/null | tr '\r\n\t' '   ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
 [ -z "$CMD" ] && exit 0
+# Modo de permisos de la sesión (Claude Code lo manda como .permission_mode).
+# En modos automáticos la pregunta "ask" podría aprobarse sola -> se bloquea.
+PERM_MODE="$(printf '%s' "$INPUT" | "$JQ" -r '.permission_mode // empty' 2>/dev/null | tr -d '\r')"
+is_auto_mode() {
+  case "$(printf '%s' "$PERM_MODE" | tr '[:upper:]' '[:lower:]')" in
+    auto|bypass|bypasspermissions|dontask|dont_ask|dont-ask) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 # ---------- ¿es un comando que trae código? ----------
 S='[[:space:]]'
