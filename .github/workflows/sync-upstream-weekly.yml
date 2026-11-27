@@ -1,0 +1,42 @@
+# Copia una vez por semana los cambios de NVIDIA/skillspector a este repo.
+# No toca ninguna PC: la herramienta instalada solo cambia cuando se reinstala
+# con `uv tool install --python 3.12 --force git+https://github.com/rftluna/NVIDIA-skillspector.git`.
+name: Sync semanal desde NVIDIA
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"   # lunes 09:00 UTC (06:00 Argentina)
+  workflow_dispatch: {}   # botón "Run workflow" para sincronizar a mano
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Traer cambios de NVIDIA
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/NVIDIA/skillspector.git
+          git fetch upstream main --tags
+
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Ya está al día con NVIDIA. Nada que hacer."
+            exit 0
+          fi
+
+          git merge --no-edit upstream/main -m "Sync semanal desde NVIDIA/skillspector"
+          git push origin main
+          git push origin --tags
+          echo "Sincronizado con NVIDIA: $(git rev-parse --short upstream/main)"
